@@ -107,8 +107,14 @@ def generate_report():
         df['customer_group'] = df['customer_group'].astype(str).str.strip()
         df['date_dt'] = pd.to_datetime(df['date'], errors='coerce')
         
+        # Calculate success rate BEFORE filtering out OPEN orders
+        total_orders_all = df['order_id'].nunique()
+        closed_mask = df['line_status'].astype(str).str.upper() == 'CLOSED'
+        closed_orders_all = df[closed_mask]['order_id'].nunique()
+        success_rate = round((closed_orders_all / total_orders_all * 100) if total_orders_all > 0 else 0, 1)
+        
         # ONLY KEEP CLOSED ORDERS
-        df = df[df['line_status'].astype(str).str.upper() == 'CLOSED'].copy()
+        df = df[closed_mask].copy()
         
         # Fetch dynamic VCB exchange rates
         import requests
@@ -146,11 +152,7 @@ def generate_report():
         total_revenue = df['revenue'].sum()
         total_weight = df['weight'].sum()
         total_orders = df['order_id'].nunique()
-        
-        # Success rate (orders closed)
-        order_status = df.groupby('order_id')['status'].first()
-        closed_orders = len(order_status[order_status.str.upper().str.contains('CLOSE', na=False)])
-        success_rate = round((closed_orders / total_orders * 100) if total_orders > 0 else 0, 1)
+        # success_rate is already calculated above
         
         # Chart data - Category
         cat_rev = df.groupby('category')['revenue'].sum().sort_values(ascending=False).head(10)

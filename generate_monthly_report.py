@@ -102,12 +102,20 @@ def generate_report(month=8, year=2026, output_file='BAO-CAO-T8.HTML'):
         df['company'] = df['company'].astype(str).str.strip()
         df['customer_group'] = df['customer_group'].astype(str).str.strip()
         
-        # ONLY KEEP CLOSED ORDERS
-        df = df[df['line_status'].astype(str).str.upper() == 'CLOSED'].copy()
-        
-        # Filter by month and year
+        # Calculate success rate BEFORE filtering out OPEN orders
         df['date_dt'] = pd.to_datetime(df['date'], errors='coerce')
-        df = df[(df['date_dt'].dt.month == month) & (df['date_dt'].dt.year == year)]
+        if year:
+            df = df[df['date_dt'].dt.year == year]
+        if month:
+            df = df[df['date_dt'].dt.month == month]
+            
+        total_orders_all = df['order_id'].nunique()
+        closed_mask = df['line_status'].astype(str).str.upper() == 'CLOSED'
+        closed_orders_all = df[closed_mask]['order_id'].nunique()
+        success_rate = round((closed_orders_all / total_orders_all * 100) if total_orders_all > 0 else 0, 1)
+
+        # ONLY KEEP CLOSED ORDERS
+        df = df[closed_mask].copy()
         
         # Fetch dynamic VCB exchange rates
         import requests
@@ -147,13 +155,6 @@ def generate_report(month=8, year=2026, output_file='BAO-CAO-T8.HTML'):
         total_revenue = df['revenue'].sum()
         total_weight = df['weight'].sum()
         total_orders = df['order_id'].nunique()
-        
-        if total_orders > 0:
-            order_status = df.groupby('order_id')['status'].first()
-            closed_orders = len(order_status[order_status.str.upper().str.contains('CLOSE', na=False)])
-            success_rate = round((closed_orders / total_orders * 100), 1)
-        else:
-            success_rate = 0
             
         cat_rev = df.groupby('category')['revenue'].sum().sort_values(ascending=False).head(10)
         region_rev = df.groupby('region')['revenue'].sum().sort_values(ascending=False)
