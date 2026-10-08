@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Báo Cáo Bán Hàng (Sales Dashboard)</title>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4338ca;
+            --primary-light: #6366f1;
+            --secondary: #0ea5e9;
+            --accent: #f43f5e;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --bg-body: #f8fafc;
+            --bg-card: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --radius: 12px;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .header .timestamp {
+            font-size: 14px;
+            color: var(--text-muted);
+            background: var(--bg-card);
+            padding: 8px 16px;
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .kpi-card {
+            background: var(--bg-card);
+            padding: 24px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+        
+        .kpi-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--primary);
+        }
+        
+        .kpi-card:nth-child(2)::before { background: var(--secondary); }
+        .kpi-card:nth-child(3)::before { background: var(--warning); }
+        .kpi-card:nth-child(4)::before { background: var(--success); }
+
+        .kpi-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .kpi-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .kpi-icon {
+            position: absolute;
+            right: 24px;
+            bottom: 24px;
+            font-size: 40px;
+            opacity: 0.1;
+            color: var(--primary);
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            padding: 24px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+        }
+
+        .chart-card h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-main);
+        }
+
+        .tables-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .table-card {
+            background: var(--bg-card);
+            padding: 24px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow-x: auto;
+        }
+        
+        .table-card h3 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-main);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            font-weight: 600;
+            color: var(--text-muted);
+            background: #f1f5f9;
+            white-space: nowrap;
+        }
+
+        tr:hover {
+            background: #f8fafc;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-closed { background: #dcfce7; color: #166534; }
+        .badge-open { background: #fef9c3; color: #854d0e; }
+        .badge-other { background: #f1f5f9; color: #475569; }
+
+        .text-right { text-align: right; }
+        .font-semibold { font-weight: 600; }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .charts-grid, .tables-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fa-solid fa-chart-line"></i> Báo Cáo Doanh Thu Tháng 7/2026</h1>
+            <div class="timestamp"><i class="fa-regular fa-clock"></i> Cập nhật: 08/10/2026 14:25</div>
+        </div>
+
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-title">Tổng Doanh Thu</div>
+                <div class="kpi-value">85,831,310,982 ₫</div>
+                <i class="fa-solid fa-money-bill-trend-up kpi-icon"></i>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">Tổng Số Đơn Hàng</div>
+                <div class="kpi-value">959</div>
+                <i class="fa-solid fa-cart-shopping kpi-icon"></i>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">Tổng Khối Lượng (KG)</div>
+                <div class="kpi-value">123,547 KG</div>
+                <i class="fa-solid fa-weight-scale kpi-icon"></i>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">Tỉ lệ hoàn thành</div>
+                <div class="kpi-value">0.0%</div>
+                <i class="fa-solid fa-clipboard-check kpi-icon"></i>
+            </div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h3>Doanh thu theo Nhóm Hàng</h3>
+                <canvas id="categoryChart" height="100"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Doanh thu theo Vùng Miền</h3>
+                <canvas id="regionChart" height="200"></canvas>
+            </div>
+        </div>
+
+        <div class="tables-grid">
+            <div class="table-card">
+                <h3><i class="fa-solid fa-box-open" style="color:var(--primary)"></i> Top Sản Phẩm Bán Chạy</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Mã SP</th>
+                            <th>Tên Sản Phẩm</th>
+                            <th class="text-right">Số Lượng</th>
+                            <th class="text-right">Doanh Thu (₫)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><strong>NPP0015</strong></td><td>Nhựa PP HP550J</td><td class='text-right'>230,250</td><td class='text-right font-semibold' style='color:var(--primary)'>9,037,329,300</td></tr>
+<tr><td><strong>NPE0005</strong></td><td>NHỰA PE HDPE 5000S</td><td class='text-right'>188,000</td><td class='text-right font-semibold' style='color:var(--primary)'>8,251,696,800</td></tr>
+<tr><td><strong>NPE0019</strong></td><td>Hạt nhựa nguyên sinh HDPE DGDA 6094</td><td class='text-right'>120,725</td><td class='text-right font-semibold' style='color:var(--primary)'>4,858,070,580</td></tr>
+<tr><td><strong>NPP0003</strong></td><td>Nhựa PP BSR T3034</td><td class='text-right'>74,270</td><td class='text-right font-semibold' style='color:var(--primary)'>2,753,271,238</td></tr>
+<tr><td><strong>NPE0020</strong></td><td>HẠT NHỰA HDPE NHD-M5000G</td><td class='text-right'>57,500</td><td class='text-right font-semibold' style='color:var(--primary)'>2,203,308,000</td></tr>
+<tr><td><strong>TDT3201</strong></td><td>PP ROPE 42.0MM YELLOW BROWN - BLUE TRACER L4 200M (168.2kg/kiện)</td><td class='text-right'>79,473</td><td class='text-right font-semibold' style='color:var(--primary)'>1,997,085,154</td></tr>
+<tr><td><strong>TDT3200</strong></td><td>PP ROPE 40.0MM YELLOW BROWN - BLUE TRACER L4 200M (164kg/kiện)</td><td class='text-right'>53,623</td><td class='text-right font-semibold' style='color:var(--primary)'>1,573,614,680</td></tr>
+<tr><td><strong>TDT2743</strong></td><td>PP ROPE 10.0MM YELLOW BROWN - BLUE TRACER L4 1000M (57.5kg/kiện)</td><td class='text-right'>49,780</td><td class='text-right font-semibold' style='color:var(--primary)'>1,558,314,884</td></tr>
+<tr><td><strong>TDT3199</strong></td><td>PP ROPE 38.0MM YELLOW BROWN - BLUE TRACER L4 200M (157kg/kiện)</td><td class='text-right'>53,356</td><td class='text-right font-semibold' style='color:var(--primary)'>1,448,702,294</td></tr>
+<tr><td><strong>TDT4551</strong></td><td>AGR SEF DÂY CỘT CHỐNG ĐỔ NGÃ PP 05.0MM ĐEN L4 220M MHL (36.96kg/kiện)</td><td class='text-right'>26,609</td><td class='text-right font-semibold' style='color:var(--primary)'>1,375,587,673</td></tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-card">
+                <h3><i class="fa-solid fa-file-invoice" style="color:var(--secondary)"></i> Đơn Hàng Gần Đây</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ngày Đặt</th>
+                            <th>Số Đơn</th>
+                            <th>Khách Hàng</th>
+                            <th>Trạng Thái</th>
+                            <th class="text-right">Thành Tiền (₫)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>2026-07-31</td><td><strong>171768</strong></td><td>CÔNG TY CỔ PHẦN SIAM BROTHERS VIỆT NAM</td><td><span class="badge badge-open">OPEN</span></td><td class='text-right font-semibold'>13,469,490</td></tr>
+<tr><td>2026-07-31</td><td><strong>171769</strong></td><td>CÔNG TY CỔ PHẦN SIAM BROTHERS VIỆT NAM</td><td><span class="badge badge-open">OPEN</span></td><td class='text-right font-semibold'>15,943,608</td></tr>
+<tr><td>2026-07-31</td><td><strong>171767</strong></td><td>CÔNG TY TNHH SIAM HIGHTECH VN</td><td><span class="badge badge-open">OPEN</span></td><td class='text-right font-semibold'>2,319,840</td></tr>
+<tr><td>2026-07-31</td><td><strong>171718</strong></td><td>CÔNG TY TNHH HOÀNG THẢO QUẢNG NAM</td><td><span class="badge badge-open">OPEN</span></td><td class='text-right font-semibold'>29,462,400</td></tr>
+<tr><td>2026-07-31</td><td><strong>171765</strong></td><td>Công Ty TNHH Thương Mại Và Dịch Vụ Siam Brothers Việt Nam</td><td><span class="badge badge-open">OPEN</span></td><td class='text-right font-semibold'>25,817,498</td></tr>
+<tr><td>2026-07-31</td><td><strong>171766</strong></td><td>Công Ty TNHH Thương Mại Và Dịch Vụ Siam Brothers Việt Nam</td><td><span class="badge badge-open">OPEN</span></td><td class='text-right font-semibold'>0</td></tr>
+<tr><td>2026-07-31</td><td><strong>171764</strong></td><td>CÔNG TY TNHH SIAM BROTHERS VIỆT NAM TOÀN CẦU</td><td><span class="badge badge-open">OPEN</span></td><td class='text-right font-semibold'>6,616,427</td></tr>
+<tr><td>2026-07-31</td><td><strong>171763</strong></td><td>Birgma Asia Trading Limited</td><td><span class="badge badge-open">OPEN</span></td><td class='text-right font-semibold'>21,060</td></tr>
+<tr><td>2026-07-31</td><td><strong>171762</strong></td><td>CÔNG TY TNHH SIAM HIGHTECH VN</td><td><span class="badge badge-open">OPEN</span></td><td class='text-right font-semibold'>11,059,200</td></tr>
+<tr><td>2026-07-31</td><td><strong>171761</strong></td><td>Birgma Asia Trading Limited</td><td><span class="badge badge-open">OPEN</span></td><td class='text-right font-semibold'>10,340</td></tr>
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chartData = {"category": {"labels": ["Order Category", "PP Rope 4 Strands (Myanmar)", "Dây thừng 8 tao", "Dây cột chống đổ ngã", "Dây thừng 4 tao lớn", "Lưới Cào PE", "Dây thừng 8 tao chì", "PP Rope 8 Strands (Myanmar)", "Dây thừng 3 tao lớn", "Dây thừng 4 tao vừa"], "data": [37017757078.0, 17316623276.8657, 4225848842.0, 3578748361.0, 3476021275.0, 2574226731.0, 1918671348.0, 1578173097.4146, 1382190750.0, 1370337321.0]}, "region": {"labels": ["DONG NAM BO", "BAC MEKONG", "NAM MEKONG", "NAM TRUNG BO", "CAO NGUYEN", "TRUNG TRUNG BO", "DONG BANG SONG HONG", "CHAU A", "BAC TRUNG BO", "DONG BAC", "CHAU MY"], "data": [40086172903.0, 7754284136.0, 2108859537.0, 1911606997.0, 1129243633.0, 1120544328.0, 546528627.0, 360157894.329, 184672058.0, 99399806.0, 117756.1958]}};
+
+        // Category Chart
+        new Chart(document.getElementById('categoryChart'), {
+            type: 'bar',
+            data: {
+                labels: chartData.category.labels,
+                datasets: [{
+                    label: 'Doanh Thu (VNĐ)',
+                    data: chartData.category.data,
+                    backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+
+        // Region Chart
+        new Chart(document.getElementById('regionChart'), {
+            type: 'doughnut',
+            data: {
+                labels: chartData.region.labels,
+                datasets: [{
+                    data: chartData.region.data,
+                    backgroundColor: [
+                        '#4338ca', '#0ea5e9', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
