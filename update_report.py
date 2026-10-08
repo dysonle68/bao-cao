@@ -82,7 +82,9 @@ def generate_report():
             'Tên Mặt Hàng': 'product_name',
             'Số Lượng': 'qty',
             'Ngày đặt hàng': 'date',
-            'Tên KH': 'customer'
+            'Tên KH': 'customer',
+            'Công ty': 'company',
+            'Nhóm KH': 'customer_group'
         }
         
         # Rename columns that exist
@@ -98,6 +100,13 @@ def generate_report():
         df['weight'] = pd.to_numeric(df['weight'], errors='coerce').fillna(0)
         df['qty'] = pd.to_numeric(df['qty'], errors='coerce').fillna(0)
         df['order_id'] = df['order_id'].astype(str)
+        df['company'] = df['company'].astype(str).str.strip()
+        df['customer_group'] = df['customer_group'].astype(str).str.strip()
+        
+        # Convert USD to VND for specific export orders
+        USD_TO_VND = 25400
+        mask = (df['company'] == 'Công ty Siam Trading') & (df['customer_group'] == 'Xuat Khau')
+        df.loc[mask, 'revenue'] = df.loc[mask, 'revenue'] * USD_TO_VND
         
         # Calculate KPIs
         total_revenue = df['revenue'].sum()
