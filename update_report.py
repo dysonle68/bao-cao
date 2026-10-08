@@ -6,24 +6,53 @@ import math
 
 def generate_report():
     # URL of the Google Sheet (Excel format)
-    sheet_url = 'https://docs.google.com/uc?export=download&id=1YK0xnK83tIvlbdCzLIUbUbe_tYSwzoy6'
+    # sheet_url = 'https://docs.google.com/uc?export=download&id=1YK0xnK83tIvlbdCzLIUbUbe_tYSwzoy6'
+    
+    data_dir = 'data'
     
     try:
-        # Read the Excel file without header
-        df = pd.read_excel(sheet_url, sheet_name='DATA', header=None)
+        import glob
+        # Get the latest excel file in the data directory
+        excel_files = glob.glob(os.path.join(data_dir, '*.xlsx'))
+        if not excel_files:
+            print(f"No Excel files found in {data_dir}")
+            return
+            
+        # Sort files by newest first
+        excel_files.sort(key=os.path.getmtime, reverse=True)
         
-        # Find the row that contains 'Mã hàng'
+        df = None
         header_row_idx = None
-        for idx, row in df.iterrows():
-            if 'Mã hàng' in row.values:
-                header_row_idx = idx
+        used_file = None
+        
+        for file_path in excel_files:
+            print(f"Checking file: {file_path}")
+            try:
+                # Read all sheets in the Excel file
+                all_sheets = pd.read_excel(file_path, sheet_name=None, header=None)
+                
+                # Check each sheet for the 'Mã hàng' column
+                for sheet_name, temp_df in all_sheets.items():
+                    for idx, row in temp_df.iterrows():
+                        if 'Mã hàng' in row.values:
+                            header_row_idx = idx
+                            df = temp_df
+                            used_file = f"{file_path} (Sheet: {sheet_name})"
+                            break
+                    if header_row_idx is not None:
+                        break
+            except Exception as e:
+                print(f"Failed to read {file_path}: {e}")
+                
+            if header_row_idx is not None:
                 break
                 
         if header_row_idx is not None:
+            print(f"Found valid data in: {used_file}")
             df.columns = df.iloc[header_row_idx]
             df = df.iloc[header_row_idx+1:].reset_index(drop=True)
         else:
-            print("Cannot find header row with 'Mã hàng'")
+            print("Cannot find header row with 'Mã hàng' in any Excel files")
             return
 
         # Clean up column names
