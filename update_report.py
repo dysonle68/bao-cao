@@ -76,11 +76,13 @@ def generate_report():
             'Số đơn hàng': 'order_id',
             'Số Khối Lượng Chuẩn': 'weight',
             'Trạng thái đơn hàng': 'status',
+            'Trạng thái Line': 'line_status',
             'Nhóm Hàng': 'category',
             'Vùng miền': 'region',
             'Mã Mặt Hàng': 'product_code',
             'Tên Mặt Hàng': 'product_name',
             'Số Lượng': 'qty',
+            'Đơn Giá': 'unit_price',
             'Ngày đặt hàng': 'date',
             'Tên KH': 'customer',
             'Công ty': 'company',
@@ -93,20 +95,25 @@ def generate_report():
                 df.rename(columns={col: new_col}, inplace=True)
             else:
                 # Add missing columns with empty/0 to prevent crashes
-                df[new_col] = 0 if new_col in ['revenue', 'weight', 'qty'] else ""
+                df[new_col] = 0 if new_col in ['revenue', 'weight', 'qty', 'unit_price'] else ""
                 
         # Clean data types
         df['revenue'] = pd.to_numeric(df['revenue'], errors='coerce').fillna(0)
         df['weight'] = pd.to_numeric(df['weight'], errors='coerce').fillna(0)
         df['qty'] = pd.to_numeric(df['qty'], errors='coerce').fillna(0)
+        df['unit_price'] = pd.to_numeric(df['unit_price'], errors='coerce').fillna(0)
         df['order_id'] = df['order_id'].astype(str)
         df['company'] = df['company'].astype(str).str.strip()
         df['customer_group'] = df['customer_group'].astype(str).str.strip()
         
+        # ONLY KEEP CLOSED ORDERS
+        df = df[df['line_status'].astype(str).str.upper() == 'CLOSED'].copy()
+        
         # Convert USD to VND for specific export orders
         USD_TO_VND = 25400
-        mask = (df['company'] == 'Công ty Siam Trading') & (df['customer_group'] == 'Xuat Khau')
-        df.loc[mask, 'revenue'] = df.loc[mask, 'revenue'] * USD_TO_VND
+        # Only convert if unit_price < 1000 to avoid double-converting rows already in VND
+        mask = (df['company'] == 'Công ty Siam Trading') & (df['customer_group'] == 'Xuat Khau') & (df['unit_price'] < 1000)
+        df.loc[mask, 'revenue'] = df.loc[mask, 'qty'] * df.loc[mask, 'unit_price'] * USD_TO_VND
         
         # Calculate KPIs
         total_revenue = df['revenue'].sum()
