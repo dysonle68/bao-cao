@@ -1,6 +1,9 @@
 name: Update Report from Google Sheet
 
 on:
+  push:
+    branches:
+      - main
   schedule:
     # Chạy mỗi ngày 1 lần vào lúc 0:00 UTC (khoảng 7:00 sáng giờ VN)
     - cron: '0 0 * * *'
