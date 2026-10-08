@@ -105,14 +105,41 @@ def generate_report(month=8, year=2026, output_file='BAO-CAO-T8.HTML'):
         # ONLY KEEP CLOSED ORDERS
         df = df[df['line_status'].astype(str).str.upper() == 'CLOSED'].copy()
         
-        # Convert USD to VND for specific export orders
-        USD_TO_VND = 25400
-        mask = (df['company'] == 'Công ty Siam Trading') & (df['customer_group'] == 'Xuat Khau') & (df['unit_price'] < 1000)
-        df.loc[mask, 'revenue'] = df.loc[mask, 'qty'] * df.loc[mask, 'unit_price'] * USD_TO_VND
-        
         # Filter by month and year
         df['date_dt'] = pd.to_datetime(df['date'], errors='coerce')
         df = df[(df['date_dt'].dt.month == month) & (df['date_dt'].dt.year == year)]
+        
+        # Fetch dynamic VCB exchange rates
+        import requests
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        
+        vcb_rates = {}
+        def get_vcb_rate(date_obj):
+            if pd.isnull(date_obj):
+                return 25400
+            date_str = date_obj.strftime('%Y-%m-%d')
+            if date_str in vcb_rates:
+                return vcb_rates[date_str]
+            try:
+                url = f'https://www.vietcombank.com.vn/api/exchangerates?date={date_str}'
+                res = requests.get(url, verify=False, timeout=10)
+                data = res.json()
+                for item in data.get('Data', []):
+                    if item.get('currencyCode') == 'USD':
+                        rate = float(item.get('transfer', 25400))
+                        vcb_rates[date_str] = rate
+                        return rate
+            except Exception:
+                pass
+            vcb_rates[date_str] = 25400
+            return 25400
+
+        # Convert USD to VND for specific export orders
+        mask = (df['company'] == 'Công ty Siam Trading') & (df['customer_group'] == 'Xuat Khau') & (df['unit_price'] < 1000)
+        for idx in df[mask].index:
+            rate = get_vcb_rate(df.loc[idx, 'date_dt'])
+            df.loc[idx, 'revenue'] = df.loc[idx, 'qty'] * df.loc[idx, 'unit_price'] * rate
         
         if df.empty:
             print(f"No data found for {month}/{year}")
