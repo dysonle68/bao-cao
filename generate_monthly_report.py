@@ -143,35 +143,12 @@ def generate_report(month=8, year=2026, output_file='BAO-CAO-T8.HTML'):
             vcb_rates[date_str] = 25400
             return 25400
 
-        # Define the exact SQL Database totals for each month in 2026
-        # This is required because the Excel file does not contain the daily exchange rates
-        # used by the ERP system to calculate AMOUNT_TOTAL.
-        db_targets = {
-            1: 115601982812,
-            2: 67180021601,
-            3: 156087581600,
-            4: 95940556915,
-            5: 88623766064,
-            6: 178462957051,
-            7: 105071816879,
-            8: 107298480037,
-        }
-
         # Convert USD to VND for specific export orders
         mask = (df['customer_group'] == 'Xuat Khau') & (df['unit_price'] < 1000)
         
-        target_gross = db_targets.get(month) if year == 2026 else None
-        
-        if target_gross is not None:
-            total_vnd = df[~mask]['revenue'].sum()
-            total_usd = (df[mask]['qty'] * df[mask]['unit_price']).sum()
-            fixed_rate = (target_gross - total_vnd) / total_usd if total_usd > 0 else 25400
-            for idx in df[mask].index:
-                df.loc[idx, 'revenue'] = df.loc[idx, 'qty'] * df.loc[idx, 'unit_price'] * fixed_rate
-        else:
-            for idx in df[mask].index:
-                rate = get_vcb_rate(df.loc[idx, 'date_dt'])
-                df.loc[idx, 'revenue'] = df.loc[idx, 'qty'] * df.loc[idx, 'unit_price'] * rate
+        for idx in df[mask].index:
+            rate = get_vcb_rate(df.loc[idx, 'date_dt'])
+            df.loc[idx, 'revenue'] = df.loc[idx, 'qty'] * df.loc[idx, 'unit_price'] * rate
         
         df_all = df.copy()
 
